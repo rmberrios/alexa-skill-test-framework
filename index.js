@@ -44,7 +44,7 @@ CallbackContext.prototype.assert = function (data) {
 CallbackContext.prototype._questionMarkCheck = function (response) {
 	'use strict';
 	var actualSay = response.response.outputSpeech ? response.response.outputSpeech.ssml : undefined;
-	
+
 	var hasQuestionMark = false;
 	for (var i = 0; actualSay && i < actualSay.length; i++) {
 		var c = actualSay[i];
@@ -68,10 +68,10 @@ CallbackContext.prototype._questionMarkCheck = function (response) {
 };
 
 module.exports = {
-	
+
 	locale: "en-US",
 	version: "1.0",
-	
+
 	//TODO: allow these to be enabled or disabled on a per-request basis
 	extraFeatures: {
 		/**
@@ -80,7 +80,7 @@ module.exports = {
 		 */
 		questionMarkCheck: true,
 	},
-	
+
 	/**
 	 * Initializes necessary values before using the test framework.
 	 * @param {object} index The object containing your skill's 'handler' method.
@@ -93,7 +93,7 @@ module.exports = {
 		this.appId = appId;
 		this.userId = userId;
 	},
-	
+
 	/**
 	 * Initializes i18n.
 	 * @param {object} resources The 'resources' object to give to i18n.
@@ -109,7 +109,7 @@ module.exports = {
 			resources: resources
 		});
 	},
-	
+
 	/**
 	 * Changes the locale used by i18n and to generate requests.
 	 * @param {string} locale E.g. "en-US"
@@ -124,7 +124,7 @@ module.exports = {
 			this.i18n.changeLanguage(this.locale);
 		}
 	},
-	
+
 	/**
 	 * Enables or disables an optional testing feature.
 	 * @param {string} key The key of the feature to enable.
@@ -137,7 +137,7 @@ module.exports = {
 		}
 		this.extraFeatures[key] = !!enabled;
 	},
-	
+
 	/**
 	 * Generates a launch request object.
 	 * @param {string} locale Optional locale to use. If not specified, uses the locale specified by `setLocale`.
@@ -155,7 +155,7 @@ module.exports = {
 			}
 		};
 	},
-	
+
 	/**
 	 * Generates an intent request object.
 	 * @param {string} intentName The name of the intent to call.
@@ -184,7 +184,7 @@ module.exports = {
 			},
 		};
 	},
-	
+
 	/**
 	 * Generates a sesson ended request object.
 	 * @param {string} reason The reason the session was ended.
@@ -206,7 +206,7 @@ module.exports = {
 			}
 		};
 	},
-	
+
 	/**
 	 * Tests the responses of a sequence of requests to the skill.
 	 * @param {object[]} sequence An array of requests to test. Each element can have these properties:
@@ -233,11 +233,11 @@ module.exports = {
 		if (!sequence) {
 			throw "'sequence' argument must be provided.";
 		}
-		
+
 		var index = this.index;
 		var locale = this.locale;
 		var self = this;
-		
+
 		it(testDescription || "returns the correct responses", function (done) {
 			var run = function (handler, sequenceIndex, attributes) {
 				if (sequenceIndex >= sequence.length) {
@@ -247,7 +247,7 @@ module.exports = {
 				else {
 					var ctx = awsContext();
 					var currentItem = sequence[sequenceIndex];
-					
+
 					var request = currentItem.request;
 					request.session.new = sequenceIndex === 0;
 					if (attributes) {
@@ -262,24 +262,24 @@ module.exports = {
 						return ctx.succeed(result);
 					};
 					handler(request, ctx, callback, true);
-					
+
 					var requestType = request.request.type;
 					if (requestType === "IntentRequest") {
 						requestType = request.request.intent.name;
 					}
 					var context = new CallbackContext(self, sequenceIndex, locale, requestType);
-					
+
 					ctx.Promise
 						.then(response => {
 							//TODO: null checks
-							
+
 							if (response.toJSON) {
 								response = response.toJSON();
 							}
-							
-							var actualSay = response.response.outputSpeech ? response.response.outputSpeech.ssml : undefined;
-							var actualReprompt = response.response.reprompt ? response.response.reprompt.outputSpeech.ssml : undefined;
-							
+
+							var actualSay = response.response && response.response.outputSpeech ? response.response.outputSpeech.ssml : undefined;
+							var actualReprompt = response.response && response.response.reprompt ? response.response.reprompt.outputSpeech.ssml : undefined;
+
 							// check the returned speech
 							if (currentItem.says !== undefined) {
 								let expected = "<speak> " + currentItem.says + " </speak>";
@@ -301,26 +301,26 @@ module.exports = {
 							if (currentItem.repromptsNothing) {
 								self._assertStringMissing(context, "reprompt", actualReprompt);
 							}
-							
+
 							if (currentItem.elicitsSlot) {
 								let elicitSlotDirective = self._getDirectiveFromResponse(response, 'Dialog.ElicitSlot');
 								let slot = elicitSlotDirective ? elicitSlotDirective.slotToElicit : '';
 								self._assertStringEqual(context, "elicitSlot", slot, currentItem.elicitsSlot);
 							}
-							
+
 							if (currentItem.confirmsSlot) {
 								let confirmSlotDirective = self._getDirectiveFromResponse(response, 'Dialog.ConfirmSlot');
 								let slot = confirmSlotDirective ? confirmSlotDirective.slotToConfirm : '';
 								self._assertStringEqual(context, "confirmSlot", slot, currentItem.confirmsSlot);
 							}
-							
+
 							if (currentItem.confirmsIntent) {
 								let confirmSlotDirective = self._getDirectiveFromResponse(response, 'Dialog.ConfirmIntent');
 								if (!confirmSlotDirective) {
 									context.assert({message: "the response did not ask Alexa to confirm the intent"});
 								}
 							}
-							
+
 							// check the shouldEndSession flag
 							if (currentItem.shouldEndSession === true && !response.response.shouldEndSession) {
 								context.assert(
@@ -338,7 +338,7 @@ module.exports = {
 										actual: "the response ended the session"
 									});
 							}
-							
+
 							// custom checks
 							if (currentItem.saysCallback) {
 								currentItem.saysCallback(context, actualSay);
@@ -346,12 +346,12 @@ module.exports = {
 							if (currentItem.callback) {
 								currentItem.callback(context, response);
 							}
-							
+
 							// extra checks
 							if (self.extraFeatures.questionMarkCheck) {
 								context._questionMarkCheck(response);
 							}
-							
+
 							run(handler, sequenceIndex + 1, response.sessionAttributes);
 						})
 						.catch(done);
@@ -360,7 +360,7 @@ module.exports = {
 			run(index.handler, 0, {});
 		});
 	},
-	
+
 	/**
 	 * Formats text via i18n.
 	 */
@@ -371,7 +371,7 @@ module.exports = {
 		}
 		return this.i18n.t.apply(this.i18n, arguments);
 	},
-	
+
 	/**
 	 * Internal method. Asserts if the strings are not equal.
 	 */
@@ -401,7 +401,7 @@ module.exports = {
 				});
 		}
 	},
-	
+
 	/**
 	 * Internal method. Asserts if the string exists.
 	 */
@@ -416,7 +416,7 @@ module.exports = {
 				});
 		}
 	},
-	
+
 	/**
 	 * Internal method.
 	 */
@@ -427,14 +427,14 @@ module.exports = {
 			message += ": " + data.message;
 		}
 		data.message = message;
-		
+
 		// the message has information that should be displayed by the test runner
 		data.generatedMessage = false;
-		
+
 		data.name = "AssertionError";
 		throw new AssertionError(message, data);
 	},
-	
+
 	/**
 	 * Internal method.
 	 */
@@ -448,7 +448,7 @@ module.exports = {
 			"new": true
 		};
 	},
-	
+
 	/**
 	 * Internal method.
 	 */
